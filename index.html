@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#176b4d">
+<title>حلال؟</title>
+<style>
+:root{--green:#176b4d;--bg:#f4f7f5;--ink:#18332a;--muted:#64756e;--line:#dce7e1}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif}
+header{background:linear-gradient(135deg,#176b4d,#248a63);color:white;padding:28px 18px 24px;text-align:center}
+header h1{margin:0;font-size:32px}header p{margin:8px auto 0;max-width:560px;line-height:1.7;opacity:.95}
+main{max-width:760px;margin:18px auto;padding:0 14px 40px}.card{background:white;border:1px solid var(--line);border-radius:18px;padding:18px;margin:14px 0;box-shadow:0 5px 18px #163c2910}
+h2{font-size:19px;margin:0 0 10px}.desc{color:var(--muted);font-size:14px;line-height:1.7;margin:0 0 12px}
+button,.button{border:0;border-radius:12px;background:var(--green);color:white;padding:12px 16px;font:inherit;font-weight:650;cursor:pointer;display:inline-block}
+button.secondary{background:#e9f2ed;color:var(--green)}button:disabled{opacity:.5;cursor:wait}
+input,textarea{width:100%;border:1px solid var(--line);border-radius:11px;padding:12px;font:inherit;background:#fff;color:var(--ink);margin:6px 0 10px}
+textarea{min-height:105px;resize:vertical}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
+video{width:100%;max-height:310px;background:#101915;border-radius:14px;margin:10px 0;object-fit:cover}
+.result{background:#f0f7f3;border-radius:12px;padding:12px;margin-top:12px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
+.status{font-size:13px;color:var(--muted);margin-top:8px}.warning{background:#fff7e6;border:1px solid #f0dfb5;padding:12px;border-radius:12px;font-size:13px;line-height:1.7}
+small{color:var(--muted)}footer{text-align:center;color:var(--muted);font-size:12px;padding:10px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header><h1>حلال؟ 🌿</h1><p>افحص المنتج بالباركود، اقرأ المكونات، وتعرّف على تاريخ الصلاحية من كاميرا جوالك.</p></header>
+<main>
+<section class="card">
+<h2>١. فحص الباركود</h2>
+<p class="desc">وجّه الكاميرا إلى الباركود. سنبحث عن المنتج في قاعدة بيانات Open Food Facts إذا كان متوفرًا.</p>
+<div class="row"><button id="startScan">تشغيل الكاميرا</button><button class="secondary" id="stopScan">إيقاف</button></div>
+<video id="video" playsinline class="hidden"></video>
+<label for="barcode">أو أدخل رقم الباركود يدويًا</label>
+<input id="barcode" inputmode="numeric" placeholder="مثال: 628..." />
+<button id="lookup">البحث عن المنتج</button>
+<div id="productResult" class="result hidden" aria-live="polite"></div>
+<div id="scanStatus" class="status"></div>
+</section>
+
+<section class="card">
+<h2>٢. قراءة المكونات وتقييمها</h2>
+<p class="desc">صوّر قائمة المكونات أو اختر صورة من جهازك. سيحاول التطبيق قراءة النص ثم يوضح الكلمات التي تحتاج إلى تحقق.</p>
+<input id="ingredientsFile" type="file" accept="image/*" capture="environment">
+<button id="readIngredients">قراءة المكونات من الصورة</button>
+<div id="ocrStatus" class="status"></div>
+<label for="ingredients">نص المكونات (يمكنك تعديله)</label>
+<textarea id="ingredients" placeholder="ستظهر المكونات المقروءة هنا، أو اكتبها بنفسك..."></textarea>
+<button id="checkIngredients">تحليل المكونات</button>
+<div id="halalResult" class="result hidden" aria-live="polite"></div>
+</section>
+
+<section class="card">
+<h2>٣. تاريخ الصلاحية</h2>
+<p class="desc">صوّر التاريخ المطبوع على العبوة، ثم راجع التاريخ الذي قرأه التطبيق قبل الحساب.</p>
+<input id="dateFile" type="file" accept="image/*" capture="environment">
+<button id="readDate">قراءة التاريخ من الصورة</button>
+<div id="dateOcrStatus" class="status"></div>
+<label for="dateText">التاريخ المقروء أو المكتوب</label>
+<input id="dateText" placeholder="مثال: 25/12/2026 أو 2026-12-25">
+<button id="calcDate">حساب المدة المتبقية</button>
+<div id="dateResult" class="result hidden" aria-live="polite"></div>
+</section>
+
+<div class="warning"><strong>مهم:</strong> هذا التطبيق مساعد إرشادي وليس جهة اعتماد شرعي أو جهة فحص مخبري. قد تخطئ قراءة الصور أو تصنيف المكونات. بلد تسجيل الشركة أو بادئة الباركود لا يثبتان بالضرورة بلد تصنيع المنتج. تحقّق من العبوة والشركة والجهات المختصة عند الشك.</div>
+</main>
+<footer>حلال؟ — أداة مساعدة مجانية</footer>
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let codeReader=null, activeStream=null;
+function show(id,text){$(id).textContent=text;$(id).classList.remove('hidden')}
+function setStatus(id,text){$(id).textContent=text}
+$('startScan').onclick=async()=>{
+ try{
+  if(!window.ZXing){setStatus('scanStatus','تعذر تحميل قارئ الباركود. أدخل الرقم يدويًا.');return}
+  codeReader=new ZXing.BrowserMultiFormatReader();
+  $('video').classList.remove('hidden');
+  setStatus('scanStatus','وجّه الكاميرا إلى الباركود...');
+  codeReader.decodeFromVideoDevice(undefined,'video',(result,err)=>{
+   if(result){$('barcode').value=result.getText();setStatus('scanStatus','تمت قراءة الباركود. جارٍ البحث...');$('lookup').click();codeReader.reset();$('video').classList.add('hidden')}
+  });
+ }catch(e){setStatus('scanStatus','لم نتمكن من تشغيل الكاميرا. تأكد من السماح باستخدامها وفتح الموقع عبر HTTPS.')}
+};
+$('stopScan').onclick=()=>{try{codeReader?.reset()}catch(e){};if(activeStream)activeStream.getTracks().forEach(t=>t.stop());$('video').classList.add('hidden');setStatus('scanStatus','تم إيقاف الكاميرا.')};
+$('lookup').onclick=async()=>{
+ const code=$('barcode').value.trim();if(!code){setStatus('scanStatus','أدخل رقم الباركود أولاً.');return}
+ show('productResult','جارٍ البحث...');
+ try{
+  const r=await fetch('https://world.openfoodfacts.org/api/v2/product/'+encodeURIComponent(code)+'.json');
+  const d=await r.json();
+  if(d.status!==1){show('productResult','لم نعثر على المنتج في قاعدة البيانات. يمكنك إدخال المكونات يدويًا.');return}
+  const p=d.product||{};
+  const name=p.product_name_ar||p.product_name||'اسم المنتج غير متوفر';
+  const brand=p.brands||'غير متوفر';
+  const origin=p.origins||p.manufacturing_places||'بلد المنشأ/التصنيع غير مذكور في البيانات';
+  const ingredients=p.ingredients_text_ar||p.ingredients_text||'المكونات غير متوفرة';
+  $('ingredients').value=ingredients;
+  show('productResult',`المنتج: ${name}\nالعلامة التجارية: ${brand}\nالمنشأ/مكان التصنيع المسجل: ${origin}\n\nالمكونات: ${ingredients}\n\nملاحظة: معلومات قاعدة البيانات قد تكون ناقصة أو مدخلة من المستخدمين.`);
+ }catch(e){show('productResult','تعذر الاتصال بقاعدة بيانات المنتجات. تحقق من اتصال الإنترنت.')}
+};
+async function doOCR(file,statusId,targetId){
+ if(!file){setStatus(statusId,'اختر صورة أولاً.');return}
+ if(!window.Tesseract){setStatus(statusId,'تعذر تحميل قارئ النصوص.');return}
+ setStatus(statusId,'جارٍ قراءة الصورة... قد يستغرق ذلك بعض الوقت.');
+ try{
+  const result=await Tesseract.recognize(file,'eng+ara',{logger:m=>{if(m.status==='recognizing text')setStatus(statusId,'جارٍ قراءة النص: '+Math.round((m.progress||0)*100)+'%')}});
+  $(targetId).value=(result.data.text||'').trim();
+  setStatus(statusId,'انتهت القراءة. راجع النص وصحّح أي أخطاء.');
+ }catch(e){setStatus(statusId,'تعذرت قراءة الصورة. جرّب صورة أوضح أو اكتب النص يدويًا.')}
+}
+$('readIngredients').onclick=()=>doOCR($('ingredientsFile').files[0],'ocrStatus','ingredients');
+$('readDate').onclick=()=>doOCR($('dateFile').files[0],'dateOcrStatus','dateText');
+$('checkIngredients').onclick=()=>{
+ const s=$('ingredients').value.toLowerCase();
+ if(!s.trim()){show('halalResult','أدخل قائمة المكونات أولاً.');return}
+ const terms=[
+  ['gelatin','جيلاتين','قد يكون مصدره حيوانيًا؛ تحقق من المصدر والشهادة.'],
+  ['pork','porcine','خنزير/مشتقاته: غير مناسب للمسلم.'],
+  ['lard','شحم خنزير','غير مناسب للمسلم.'],
+  ['alcohol','ethanol','كحول/إيثانول: يلزم التحقق من النوع والاستخدام والمصدر والفتوى المعتمدة.'],
+  ['e120','carmine','ملون قرمزي (E120): يحتاج إلى تحقق من المصدر والحكم المعتمد.'],
+  ['rennet','منفحة','تحقق من المصدر وطريقة الإنتاج.'],
+  ['whey','مصل اللبن','تحقق من مصدر الإنزيمات المستخدمة في الجبن.']
+ ];
+ let hits=[];
+ for(const t of terms){if(t.slice(0,2).some(x=>s.includes(x)))hits.push('• '+t[2])}
+ show('halalResult',(hits.length?'مكونات تحتاج إلى تحقق:\n'+hits.join('\n'):'لم تظهر الكلمات الشائعة التي يبحث عنها هذا الفحص.')+'\n\nالنتيجة: لا يمكن الجزم بالحلال أو الحرام من النص وحده. ابحث عن شهادة حلال موثوقة أو تواصل مع الشركة عند الشك.');
+};
+$('calcDate').onclick=()=>{
+ const raw=$('dateText').value.trim();
+ let m=raw.match(/(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})/);
+ if(!m){m=raw.match(/(\d{1,2})[-/.](\d{1,2})[-/.](20\d{2})/);if(m)m=[m[0],m[3],m[2],m[1]]}
+ if(!m){show('dateResult','لم أستطع فهم التاريخ. أدخله بصيغة يوم/شهر/سنة مثل 25/12/2026.');return}
+ const date=new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));
+ if(date.getFullYear()!=Number(m[1])||date.getMonth()!=Number(m[2])-1||date.getDate()!=Number(m[3])){show('dateResult','التاريخ غير صحيح. راجعه ثم أعد المحاولة.');return}
+ const today=new Date();today.setHours(0,0,0,0);date.setHours(0,0,0,0);
+ const days=Math.ceil((date-today)/86400000);
+ show('dateResult',days>0?`متبقي ${days} يومًا حتى التاريخ المدخل.`:days===0?'التاريخ المدخل هو اليوم.':'انتهى التاريخ المدخل منذ '+Math.abs(days)+' يومًا.');
+};
+</script>
+</body></html>
